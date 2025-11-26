@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# Pokédex Linda 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Uma aplicação mobile de Pokédex desenvolvida com React Native e Expo, permitindo explorar e descobrir informações sobre diversos Pokémon.
 
-## Get started
+### Pré-requisitos
 
-1. Install dependencies
+- Node.js instalado
+
+## 🚀 Como instalar e rodar
+
+1. Clone o repositório
+
+   ```bash
+   git clone https://github.com/debbtrbl/pokedex-advanced.git
+   ```
+2. Entre na pasta do projeto
+
+   ```bash
+   cd pokedex-advanced
+   ```
+   
+1. Instale as dependências
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Execute o projeto
 
    ```bash
    npx expo start
    ```
+   ou
+    ```bash
+   npm start
+   ```
 
-In the output, you'll find options to open the app in a
+Opções para Visualizar:
+   
+   - Expo Go: Escaneie o QR code com o app Expo Go
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   -  Emulador: Pressione a para Android ou i para iOS
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   - Web: Pressione w para versão web
 
-## Get a fresh project
 
-When you're ready, run:
+## ✅ Funcionalidades Principais
 
-```bash
-npm run reset-project
-```
+ - Lista de Pokémon com imagem, nome, tipo e número;
+   
+ - Paginação com botões "Anterior" e "Próxima";
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Busca por nome de Pokémon;
 
-## Learn more
+- Modal de detalhes com informações completas;
+- Tratamento de erros com mensagens amigáveis e botão de tentar novamente.
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🔧 Tecnologias
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+ - Expo + React Native
 
-## Join the community
+-  React Native Paper para UI components
 
-Join our community of developers creating universal apps.
+- TypeScript para tipagem
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- PokeAPI para dados dos Pokémon
+
+##  📸 Screenshots
+#### Tela principal com lista de pokémon e modal de detalhes
+<img src="./assets/screenshots/principal.png" width="200" alt="Tela Principal"> <img src="./assets/screenshots/modal.png" width="200" alt="Detalhes do Pokémon">
+
