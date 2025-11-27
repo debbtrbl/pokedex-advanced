@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
@@ -63,6 +63,7 @@ interface PokemonDetalhes {
 export default function Index() {
   const [pokemons, setPokemons] = useState<Pokemon[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoMais, setCarregandoMais] = useState(false); 
   const [textoBusca, setTextoBusca] = useState('');
   const [modalVisivel, setModalVisivel] = useState(false);
   const [pokemonSelecionado, setPokemonSelecionado] = useState<PokemonDetalhes | null>(null);
@@ -70,24 +71,41 @@ export default function Index() {
   const [offset, setOffset] = useState(0); 
   const limite = 20; 
   const [erroBusca, setErroBusca] = useState(false);
+  const [temMaisDados, setTemMaisDados] = useState(true);
 
   const themeColor = "#EF4444"; 
 
-  const buscarPokemons = async (novoOffset: number) => {
-    setCarregando(true);
+  const buscarPokemons = async (novoOffset: number, append: boolean = false) => {
+    if (append) {
+      setCarregandoMais(true); 
+    } else {
+      setCarregando(true);
+    }
     setErroBusca(false); 
     try{
       const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limite}&offset=${novoOffset}`);
       const dados = await response.json();
-      setPokemons(dados.results);
+      if (append) {
+        setPokemons(prev => [...prev, ...dados.results]); 
+      } else {
+        setPokemons(dados.results); 
+      }
       setOffset(novoOffset); 
+      setTemMaisDados(dados.results.length === limite); // verifica se tem mais dados pra carregar
     } catch (error) {
       console.error('Error ao buscar Pokémon:', error);
       setErroBusca(true);
     } finally {
       setCarregando(false);
+      setCarregandoMais(false);
     }
   };
+
+  const carregarMais = useCallback(() => {
+    if (!carregando && !carregandoMais && temMaisDados) {
+      buscarPokemons(offset + limite, true); // se append é true, adiciona na lista dos pokemons que ja tem
+    }
+  }, [carregando, carregandoMais, temMaisDados, offset]); // callback para evitar recriações desnecessárias
 
   const buscarDetalhesPokemon = async (pokemonNome: string) => {
     setCarregandoDetalhes(true);
@@ -161,6 +179,17 @@ export default function Index() {
     />
   );
 
+  const renderizarFooter = () => {
+    if (!carregandoMais) return null;
+    
+    return (
+      <View style={styles.footerContainer}>
+        <ActivityIndicator size="small" color={themeColor} />
+        <Text style={{marginTop: 8, color: 'gray'}}>Carregando mais Pokémon...</Text>
+      </View>
+    );
+  };
+
   const renderizarErro = () => (
     <View style={styles.centerContainer}>
       <Text style={{color: themeColor, fontSize: 18, marginBottom: 10}}>Erro ao carregar Pokémon</Text>
@@ -233,17 +262,20 @@ export default function Index() {
               <FlatList
                 data={pokemons}
                 renderItem={renderizarItemPokemon}
-                keyExtractor={(item) => item.name}
+                keyExtractor={(item, index) => `${item.name}-${index}`} 
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 20 }}
                 numColumns={2}
                 columnWrapperStyle={{ justifyContent: 'space-between' }}
+                onEndReached={carregarMais} // dispara quando chega perto do final
+                onEndReachedThreshold={0.3} // 30% do final p começar a carregar
+                ListFooterComponent={renderizarFooter} 
               />
             )}
           </View>
 
-          {/* Paginação */}
-          <View style={styles.paginationContainer}>
+          {/* Paginação antigaaa */}
+          {/* <View style={styles.paginationContainer}>
              <Button
                 mode="contained"
                 onPress={() => buscarPokemons(Math.max(0, offset - limite))}
@@ -266,7 +298,7 @@ export default function Index() {
               >
                 Próxima
               </Button>
-          </View>
+          </View> */}
 
           <Portal>
             <Modal 
@@ -392,6 +424,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20
   },
+  footerContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   header: {
     backgroundColor: '#EF4444',
     padding: 16,
@@ -429,14 +466,14 @@ const styles = StyleSheet.create({
     marginLeft: 8 ,
     
   },
-  paginationContainer: {
-    padding: 16,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
+  // paginationContainer: {
+  //   padding: 16,
+  //   backgroundColor: 'white',
+  //   borderTopWidth: 1,
+  //   borderTopColor: '#e5e7eb',
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between'
+  // },
   modalContainer: {
     backgroundColor: 'white',
     padding: 20,
