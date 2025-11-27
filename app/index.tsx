@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -27,6 +27,10 @@ import CardPokemon, { coresPorTipo } from './components/CardPokemon';
 interface Pokemon {
   name: string; 
   url: string;   
+}
+interface PokemonType {
+  name: string;
+  url: string;
 }
 
 interface PokemonDetalhes {
@@ -73,9 +77,149 @@ export default function Index() {
   const [erroBusca, setErroBusca] = useState(false);
   const [temMaisDados, setTemMaisDados] = useState(true);
 
+  const [tentativas, setTentativas] = useState(0);
+  const [ultimoErro, setUltimoErro] = useState<string | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const [tiposPokemon, setTiposPokemon] = useState<PokemonType[]>([]);
+  const [tipoSelecionado, setTipoSelecionado] = useState<string>('all');
+  const [carregandoTipos, setCarregandoTipos] = useState(false);
+  const [filtroAtivo, setFiltroAtivo] = useState(false);
+
+   const requestsAtivos = useRef<Set<AbortController>>(new Set());
   const themeColor = "#EF4444"; 
 
+    const delay = (tentativa: number) => { // isso serve pra calcular o delay com jitter (que é um tempo aleatório)
+    const baseDelay = Math.min(1000 * Math.pow(2, tentativa), 30000); // delay exponencial com 30s de tempo maxino
+    const jitter = Math.random() * 1000;
+    
+    return baseDelay + jitter;
+  };
+
+  const fetchComTimeoutERetry = async (url: string, tentativa = 0): Promise<Response> => {
+    const MAX_TENTATIVAS = 3;
+    const TIMEOUT_MS = 10000; // 10 segundos de timeout pra cada requisicao dai faz o retry
+
+    setTentativas(tentativa + 1); // atualizar estado de tentativas
+
+    // criar novo abortcontroller p cada tentativa (serve pra cancelar a requisicao se demorar demais)
+    abortControllerRef.current = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortControllerRef.current?.abort();
+    }, TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        signal: abortControllerRef.current.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      // se for erro 500 e afins faz retry
+      if (response.status >= 500 && response.status < 600 && tentativa < MAX_TENTATIVAS) {
+        const proximoDelay = delay(tentativa);
+        await new Promise(resolve => setTimeout(resolve, proximoDelay));
+        return fetchComTimeoutERetry(url, tentativa + 1);
+      }
+
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      // se foi abortado por timeout ou cancelamento
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout: requisição muito lenta');
+      }
+
+      // outros erros de rede ele faz retry
+      if (tentativa < MAX_TENTATIVAS) {
+        const proximoDelay = delay(tentativa);
+        await new Promise(resolve => setTimeout(resolve, proximoDelay));
+        return fetchComTimeoutERetry(url, tentativa + 1);
+      }
+
+      throw error;
+    }
+  };
+
+  const buscarTiposPokemon = async () => {
+    setCarregandoTipos(true);
+    try {
+      const response = await fetchComTimeoutERetry('https://pokeapi.co/api/v2/type');
+      const dados = await response.json();
+      // filtra apenas tipos de pokémon 
+      const tiposValidos = dados.results.filter((tipo: PokemonType) => 
+        !['shadow', 'unknown'].includes(tipo.name)
+      );
+      setTiposPokemon(tiposValidos);
+    } catch (error) {
+      console.error('Erro ao carregar tipos:', error);
+    } finally {
+      setCarregandoTipos(false);
+    }
+  };
+
+  const buscarPokemonsPorTipo = async (tipo: string, novoOffset: number = 0) => {
+    if (tipo === 'all') {
+      buscarPokemons(novoOffset, false);
+      setFiltroAtivo(false);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    setCarregando(true);
+    setFiltroAtivo(true);
+    setErroBusca(false);
+
+    try {
+      const response = await fetchComTimeoutERetry(
+        `https://pokeapi.co/api/v2/type/${tipo}`
+      );
+      const dados = await response.json();
+      
+      // pega os pokémon do tipo selecionado
+      const pokemonsDoTipo = dados.pokemon.map((p: any) => p.pokemon);
+      
+      // paginação manual dos pokémon do tipo
+      const inicio = novoOffset;
+      const fim = inicio + limite;
+      const pokemonsPaginados = pokemonsDoTipo.slice(inicio, fim);
+      
+      if (novoOffset === 0) {
+        setPokemons(pokemonsPaginados);
+      } else {
+        setPokemons(prev => [...prev, ...pokemonsPaginados]);
+      }
+      
+      setOffset(novoOffset);
+      setTemMaisDados(fim < pokemonsDoTipo.length);
+      setUltimoErro(null);
+    } catch (error: any) {
+      console.error('Erro ao buscar Pokémon por tipo:', error);
+      setErroBusca(true);
+      setUltimoErro(error.message);
+    } finally {
+      setCarregando(false);
+      setCarregandoMais(false);
+    }
+  };
+
   const buscarPokemons = async (novoOffset: number, append: boolean = false) => {
+
+    if (filtroAtivo && tipoSelecionado !== 'all') {
+      // se tem filtro ativo usa a busca por tipo
+      buscarPokemonsPorTipo(tipoSelecionado, novoOffset);
+      return;
+    }
+
+    if (abortControllerRef.current) { // cancela requisicao anterior se tiver pra nao ter conglito
+      abortControllerRef.current.abort();
+    }
+
     if (append) {
       setCarregandoMais(true); 
     } else {
@@ -83,7 +227,7 @@ export default function Index() {
     }
     setErroBusca(false); 
     try{
-      const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limite}&offset=${novoOffset}`);
+      const response = await fetchComTimeoutERetry(`https://pokeapi.co/api/v2/pokemon?limit=${limite}&offset=${novoOffset}`);
       const dados = await response.json();
       if (append) {
         setPokemons(prev => [...prev, ...dados.results]); 
@@ -95,6 +239,7 @@ export default function Index() {
     } catch (error) {
       console.error('Error ao buscar Pokémon:', error);
       setErroBusca(true);
+      
     } finally {
       setCarregando(false);
       setCarregandoMais(false);
@@ -103,15 +248,19 @@ export default function Index() {
 
   const carregarMais = useCallback(() => {
     if (!carregando && !carregandoMais && temMaisDados) {
-      buscarPokemons(offset + limite, true); // se append é true, adiciona na lista dos pokemons que ja tem
+      if (filtroAtivo && tipoSelecionado !== 'all') {
+        buscarPokemonsPorTipo(tipoSelecionado, offset + limite);
+      } else {
+        buscarPokemons(offset + limite, true);
+      }
     }
-  }, [carregando, carregandoMais, temMaisDados, offset]); // callback para evitar recriações desnecessárias
+  }, [carregando, carregandoMais, temMaisDados, offset, filtroAtivo, tipoSelecionado]); // callback para evitar recriações desnecessárias
 
   const buscarDetalhesPokemon = async (pokemonNome: string) => {
     setCarregandoDetalhes(true);
     setModalVisivel(true); 
     try{
-        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonNome.toLowerCase()}`);
+        const response = await fetchComTimeoutERetry(`https://pokeapi.co/api/v2/pokemon/${pokemonNome.toLowerCase()}`);
         if (response.status === 404) {
           Alert.alert('Pokémon não encontrado!');
           setModalVisivel(false);
@@ -127,29 +276,50 @@ export default function Index() {
     }
   };
 
-  const buscarPokemonPorNome = async () => {
-    if (!textoBusca.trim()) {
-      buscarPokemons(0);
-      return;
-    }
+  const buscarPokemonPorNome = useCallback(() => {
+  // cancelar timeout anterior
+  if (timeoutRef.current !== null) {
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  }
 
+  // cancelar requisição anterior
+  if (abortControllerRef.current) {
+    abortControllerRef.current.abort();
+  }
+
+  if (!textoBusca.trim()) {
+    buscarPokemons(0);
+    return;
+  }
+
+  // debounce de 500ms 
+  timeoutRef.current = setTimeout(async () => {
     setCarregando(true);
-    try{
-      const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${textoBusca.toLowerCase()}`);
+    try {
+      const response = await fetchComTimeoutERetry(
+        `https://pokeapi.co/api/v2/pokemon/${textoBusca.toLowerCase()}`
+      );
+      
       if (response.status === 404) {
         Alert.alert('Pokémon não encontrado!');
         return;
       }
+      
       const dadosPokemon = await response.json();
       setPokemonSelecionado(dadosPokemon);
       setModalVisivel(true);
-    } catch (erro){
-      Alert.alert('Erro', 'Pokémon não encontrado!');
+      setUltimoErro(null);
+    } catch (erro: any) {
+      Alert.alert('Erro', erro.message || 'Pokémon não encontrado!');
     } finally {
-      setCarregando(false); 
+      setCarregando(false);
       setTextoBusca('');
+      timeoutRef.current = null; 
     }
-  };
+  }, 500);
+}, [textoBusca]);
+
 
   const formatarNomeEstatistica = (estatisticaNome: string) => {
     const statMap: { [key: string]: string } = {
@@ -167,8 +337,26 @@ export default function Index() {
     return coresPorTipo[tipo] || '#9ca3af';
   };
 
+  const limparFiltros = () => {
+    setTipoSelecionado('all');
+    setFiltroAtivo(false);
+    buscarPokemons(0, false);
+  };
+
   useEffect(() => {
     buscarPokemons(0);
+    buscarTiposPokemon();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const renderizarItemPokemon = ({ item, index }: { item: Pokemon; index: number }) => (
@@ -192,9 +380,14 @@ export default function Index() {
 
   const renderizarErro = () => (
     <View style={styles.centerContainer}>
-      <Text style={{color: themeColor, fontSize: 18, marginBottom: 10}}>Erro ao carregar Pokémon</Text>
+      <Text style={{color: themeColor, fontSize: 18, marginBottom: 10}}>
+        {ultimoErro || 'Erro ao carregar Pokémon'}
+      </Text>
       <Text style={{color: 'gray', textAlign: 'center', marginBottom: 20}}>
         Verifique sua conexão e tente novamente
+      </Text>
+      <Text style={{color: 'gray', fontSize: 12, marginBottom: 10}}>
+        Tentativas: {tentativas}
       </Text>
       <Button 
         mode="contained" 
@@ -217,6 +410,74 @@ export default function Index() {
           {/* Header */}
           <Surface style={styles.header} elevation={2}>
             <Text style={styles.headerTitle}>Pokédex Linda</Text>
+          </Surface>
+
+          {/* filtros por tipo */}
+          <Surface style={styles.filtersContainer} elevation={1}>
+            <View style={styles.filtersHeader}>
+              <Text style={styles.filtersTitle}>Pesquisar por tipo</Text>
+              {filtroAtivo && (
+                <Button 
+                  mode="text" 
+                  onPress={limparFiltros}
+                  textColor={themeColor}
+                  compact
+                >
+                  Limpar
+                </Button>
+              )}
+            </View>
+            
+            {carregandoTipos ? (
+              <ActivityIndicator size="small" color={themeColor} />
+            ) : (
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tiposContainer}
+              >
+                <Chip
+                  selected={tipoSelecionado === 'all'}
+                  onPress={() => {
+                    setTipoSelecionado('all');
+                    buscarPokemons(0, false);
+                  }}
+                  style={[
+                    styles.tipoChip,
+                    tipoSelecionado === 'all' && { backgroundColor: themeColor }
+                  ]}
+                  textStyle={
+                    tipoSelecionado === 'all' ? { color: 'white' } : { color: '#4b5563' }
+                  }
+                >
+                  Todos
+                </Chip>
+                
+                {tiposPokemon.map((tipo) => (
+                  <Chip
+                    key={tipo.name}
+                    selected={tipoSelecionado === tipo.name}
+                    onPress={() => {
+                      setTipoSelecionado(tipo.name);
+                      buscarPokemonsPorTipo(tipo.name, 0);
+                    }}
+                    style={[
+                      styles.tipoChip,
+                      tipoSelecionado === tipo.name && { 
+                        backgroundColor: coresPorTipo[tipo.name] || themeColor 
+                      }
+                    ]}
+                    textStyle={
+                      tipoSelecionado === tipo.name ? 
+                      { color: 'white' } : 
+                      { color: '#4b5563', textTransform: 'capitalize' }
+                    }
+                  >
+                    {tipo.name}
+                  </Chip>
+                ))}
+              </ScrollView>
+            )}
           </Surface>
 
           {/* Barra de Busca */}
@@ -507,5 +768,32 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     marginBottom: 8,
     fontSize: 16
+  },
+  filtersContainer: {
+    backgroundColor: 'white',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  filtersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filtersTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  tiposContainer: {
+    paddingRight: 8,
+    gap: 8,
+  },
+  tipoChip: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#e5e7eb',
+    borderWidth: 1,
   }
 });
