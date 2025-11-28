@@ -153,7 +153,7 @@ export default function Index() {
       return fetchComTimeoutERetry(url, tentativa + 1);
     }
 
-    return response; // ← Voltando a retornar Response diretamente
+    return response; 
   } catch (error: any) {
     clearTimeout(timeoutId);
 
@@ -179,7 +179,7 @@ export default function Index() {
     const response = await fetchComTimeoutERetry(
       "https://pokeapi.co/api/v2/type"
     );
-    const dados = await response.json(); // ← Parse do JSON aqui mesmo
+    const dados = await response.json(); 
     // filtra apenas tipos de pokémon
     const tiposValidos = dados.results.filter(
       (tipo: PokemonType) => !["shadow", "unknown"].includes(tipo.name)
@@ -236,14 +236,12 @@ export default function Index() {
       `https://pokeapi.co/api/v2/type/${tipo}`
     );
     
-    // Verifica se a resposta é OK antes de fazer parse
     if (!response.ok) {
       throw new Error(`Erro HTTP: ${response.status}`);
     }
     
     const dados = await response.json();
 
-    // CORREÇÃO: Verifica se dados.pokemon existe antes de usar .map()
     if (!dados.pokemon || !Array.isArray(dados.pokemon)) {
       throw new Error("Dados inválidos da API - pokemon não encontrado");
     }
@@ -283,7 +281,7 @@ export default function Index() {
     } else {
       setErroBusca(true);
       setUltimoErro(error.message);
-      setPokemons([]); // Garante que pokemons nunca fique undefined
+      setPokemons([]); // garante que pokemons nunca fique undefined
     }
   } finally {
     setCarregando(false);
@@ -306,7 +304,7 @@ export default function Index() {
     const cacheData = await buscarDoCache(cacheKey);
     if (cacheData && !append) {
       setUsandoOCache(true);
-      setPokemons(cacheData.results || []); // ← CORREÇÃO: fallback para array vazio
+      setPokemons(cacheData.results || []); // fallback para array vazio
       setOffset(novoOffset);
       setTemMaisDados(cacheData.results.length === limite);
 
@@ -350,9 +348,9 @@ export default function Index() {
       }
 
       if (append) {
-        setPokemons((prev) => [...(prev || []), ...dados.results]); // ← CORREÇÃO: prev pode ser undefined
+        setPokemons((prev) => [...(prev || []), ...dados.results]); // fallback para array vazio
       } else {
-        setPokemons(dados.results || []); // ← CORREÇÃO: fallback para array vazio
+        setPokemons(dados.results || []); //  fallback para array vazio
       }
       setOffset(novoOffset);
       setTemMaisDados(dados.results.length === limite); // verifica se tem mais dados pra carregar
@@ -362,12 +360,11 @@ export default function Index() {
       // tenta usar cache como fallback (só se não for append)
       const fallbackCache = await buscarDoCache(cacheKey);
       if (fallbackCache && !append) {
-        setPokemons(fallbackCache.results || []); // ← CORREÇÃO: fallback para array vazio
+        setPokemons(fallbackCache.results || []); // fallback para array vazio
         setOffset(novoOffset);
         setTemMaisDados(fallbackCache.results.length === limite);
       } else {
         setErroBusca(true);
-        // CORREÇÃO: Garantir que pokemons nunca fique undefined
         setPokemons([]);
       }
     } finally {

@@ -12,7 +12,7 @@ const useNetwork = (): UseNetworkReturn => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        // Tenta fazer uma requisição simples para verificar conexão
+        // tenta fazer uma requisição simples p verificar conexão
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
@@ -29,10 +29,10 @@ const useNetwork = (): UseNetworkReturn => {
       }
     };
 
-    // Verifica conexão inicial
+    // verifica conexão inicial
     checkConnection();
 
-    // Verifica periodicamente (a cada 15 segundos)
+    // verifica a cada 15 segundos)
     timeoutRef.current = setInterval(checkConnection, 15000);
 
     return () => {

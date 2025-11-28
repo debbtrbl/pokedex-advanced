@@ -47,7 +47,7 @@ const useCache = (ttlPadrao: number = 1000 * 60 * 60 * 24): UseCacheReturn => {
           setUsandoCache(true); 
           return cacheData.data;
         } else {
-          // Remove expirado
+          // remove expirado
           await AsyncStorage.removeItem(`cache_${chave}`);
         }
       }
@@ -55,7 +55,7 @@ const useCache = (ttlPadrao: number = 1000 * 60 * 60 * 24): UseCacheReturn => {
       console.error('Erro ao buscar do cache:', error);
     }
 
-    // ✅ Se não encontrou cache, marca como não usando cache
+    // se não encontrou cache, marca como não usando cache
     if (!cacheEncontrado) {
       setUsandoCache(false);
     }
