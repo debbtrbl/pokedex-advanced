@@ -1,4 +1,4 @@
-# Pokédex Linda 📱
+# Pokédex Linda Advanced 📱
 
 Uma aplicação mobile de Pokédex desenvolvida com React Native e Expo, permitindo explorar e descobrir informações sobre diversos Pokémon.
 
