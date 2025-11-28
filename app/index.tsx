@@ -123,7 +123,7 @@ export default function Index() {
   const fetchComTimeoutERetry = async (
   url: string,
   tentativa = 0
-): Promise<Response> => { // ← Voltando para Promise<Response>
+): Promise<Response> => { 
   const MAX_TENTATIVAS = 3;
   const TIMEOUT_MS = 10000; // 10 segundos de timeout pra cada requisicao dai faz o retry
 

@@ -46,26 +46,43 @@ Opções para Visualizar:
 
 ## ✅ Funcionalidades Principais
 
- - Lista de Pokémon com imagem, nome, tipo e número;
+ - Lista infinita (Infinite Scroll) de Pokémon com imagem, nome, tipo e número;
    
- - Paginação com botões "Anterior" e "Próxima";
+ - Filtro por tipos;
 
-- Busca por nome de Pokémon;
+- Busca otimizada com Debounce;
 
 - Modal de detalhes com informações completas;
+
 - Tratamento de erros com mensagens amigáveis e botão de tentar novamente.
+
+- Proteção contra Race Conditions;
+
+- Cancelamento de requisições obsoletas;
+
+- Timeouts: Proteção contra requisições travadas;
+
+- Retry System: Implementação de retentativas automáticas com Backoff Exponencial e Jitter para conexões instáveis.
+
+- Modo Offline: O app avisa quando está sem internet, mas continua funcionando com dados salvos no cache.
+
+- Background Refresh: Atualização silenciosa dos dados em cache quando a conexão é restabelecida.
 
 ## 🔧 Tecnologias
 
- - Expo + React Native
+- Expo + React Native
 
--  React Native Paper para UI components
+- React Native Paper para UI components
 
 - TypeScript para tipagem
+
+- AsyncStorage para armazenamento
+
+- NetInfo para rede/conectividade
 
 - PokeAPI para dados dos Pokémon
 
 ##  📸 Screenshots
-#### Tela principal com lista de pokémon e modal de detalhes
-<img src="./assets/screenshots/principal.png" width="200" alt="Tela Principal"> <img src="./assets/screenshots/modal.png" width="200" alt="Detalhes do Pokémon">
+#### Tela principal com lista de pokémon, pesquisa por tipo e modal de detalhes
+<img src="./assets/screenshots/home.png" width="200" alt="Tela Principal"> <img src="./assets/screenshots/filtro.png" width="200" alt="Detalhes do Pokémon"> <img src="./assets/screenshots/modal.png" width="200" alt="Detalhes do Pokémon">
 
